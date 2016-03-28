@@ -21,11 +21,14 @@ def norm_for_treatments(medicalNet, final):
 def restrict_factors(curr, patient):
     for item in patient.evidenceVariables():
         restrict = list(curr)
+
         for factor in curr:
+
             if item in factor.get_scope():
                 add_fact = restrict_factor(factor, item, item.get_evidence())
                 restrict.remove(factor)
                 restrict.append(add_fact)
+
         curr = restrict
 
     return curr
@@ -40,13 +43,14 @@ def elim_vars_fin_factors(eliminate, curr):
         iteration = list(curr)
 
         for factor in iteration:
+
             if item in factor.get_scope():
                 all_factors.append(factor)
                 curr.remove(factor)
 
         add_fact = sum_out_variable(multiply_factors(all_factors), item)
         curr.append(add_fact)
-        
+
     return curr
 
 
@@ -56,28 +60,38 @@ def all_pairs(variables, conditions=None):
     '''
     if conditions is None:
         conditions = [[None]]
+
     pairs = [[]]
     for thg in variables:
+
         if thg in conditions[0]:
+
             for item in pairs:
                 item.append(conditions[1][conditions[0].index(thg)])
         else:
             newie = []
+
             for value in thg.domain():
+
                 for item in pairs:
                     nitem = list(item)
                     nitem.append(value)
                     newie.append(nitem)
+
             pairs = newie
 
     return pairs
 
 def DecisionSupport(medicalNet, patient):
     medicalNet.set_evidence_by_patient(patient)
-    eliminate = list(set(set(set(medicalNet.net.variables()) \
-                .difference(medicalNet.getTreatmentVars()) \
-                .difference(medicalNet.getOutcomeVars()))) \
-                .difference(patient.evidenceVariables()))
+    
+    eliminate = list(\
+                    set(\
+                        set(\
+                            set(medicalNet.net.variables()) \
+                            .difference(medicalNet.getTreatmentVars()) \
+                        .difference(medicalNet.getOutcomeVars()))) \
+                    .difference(patient.evidenceVariables()))
 
     # get the full list of necessary factors
     curr = medicalNet.net.factors() 
