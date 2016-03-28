@@ -17,102 +17,106 @@ Return:
               a new factor that is the product of the factors in "factors"
 '''
 def multiply_factors(factors):
-    factor_list = list(factors)
-    while(len(factor_list) > 1):
-        common_variables = find_common_variables(factor_list)
-        if len(common_variables) == 0: #There may be a constant factor
-            factor_list = check_const_factors(common_variables, factor_list)
+    flist = list(factors)
+
+    while(len(flist) > 1):
+        freq_used = find_freq_used(flist)
+        # Check for any constant factors
+
+        if len(freq_used) == 0:
+            flist = check_const_factors(freq_used, flist)
 
 
-        #There is no constant factor
-        product_combos, product_scope = no_const_factor(common_variables, factor_list)
-        #Generate new factor table
+        # There is no constant factors
+        product_combos, product_scope = no_const_factor(freq_used, flist)
+
+        #Generate a new factor table from factors
         
-        product_scope, factor_list, product_combos, new_factor_table = get_matches(product_combos, factor_list, product_scope)
+        product_scope, flist, product_combos, newie_table = get_connect(product_combos, flist, product_scope)
         
-        #Create new factor object and return it
-        new_factor = Factor("Product of {}".format(factor_list), product_scope)
-        new_factor.add_values(new_factor_table)
-        factor_list = [new_factor]
-    return factor_list[0]
+        #Return new Factor table
+        newie = Factor("Product of {}".format(flist), product_scope)
+        newie.add_values(newie_table)
+        flist = [newie]
+    return flist[0]
 
-def get_matches(product_combos, factor_list, product_scope):
-    new_factor_table = []
+def get_connect(product_combos, flist, product_scope):
+    newie_table = []
     for product_combo in product_combos:
-        #Compute matches
-        matches = []
-        for factor_index in range(len(factor_list)):
-            filter_array = [[],[]]
-            for var_index in range(len(product_scope)):
-                if product_scope[var_index] in factor_list[factor_index].get_scope():
-                    filter_array[0].append(product_scope[var_index])
-                    filter_array[1].append(product_combo[var_index])
-            factor_matches = get_all_value_combinations(factor_list[factor_index].get_scope(), filter_array)
-            matches.append(factor_matches)
+        #Compute connect
+        connect = []
+        for factor_index in range(len(flist)):
+            filters = [[],[]]
+            for ind in range(len(product_scope)):
+                if product_scope[ind] in flist[factor_index].get_scope():
+                    filters[0].append(product_scope[ind])
+                    filters[1].append(product_combo[ind])
+            factor_connect = get_all_value_combinations(flist[factor_index].get_scope(), filters)
+            connect.append(factor_connect)
         #Compute products
-        cart = list(itertools.product(*matches))
+        cart = list(itertools.product(*connect))
         for index in range(len(cart)):
-            product_value = factor_list[0].get_value(cart[index][0])
+            product_value = flist[0].get_value(cart[index][0])
             for index2 in range(len(cart[index])):
                 if not product_value: #If it is 0, we can stop
                         break
                 if index2 == 0:
                     continue #Do nothing, we initialized at this value
                 else:
-                    product_value *= factor_list[index2].get_value(cart[index][index2])
+                    product_value *= flist[index2].get_value(cart[index][index2])
             #Add new entry to factor table
             entry = list(product_combo)
             entry.append(product_value)
-            new_factor_table.append(entry)
-    return product_scope, factor_list, product_combos, new_factor_table
+            newie_table.append(entry)
+    return product_scope, flist, product_combos, newie_table
 
-def no_const_factor(common_variables, factor_list):
+def no_const_factor(freq_used, flist):
     mapping = [] #Contains maps to the indices of common variables in each factor
     combos = [] #Contains arrays of variable value combos for each factor
     product_scope = [] #Product factor's scope
-    uncommon_variables = [] #List of uncommon variables, we will use this to guarantee order in the new entries
-    for factor in factor_list:
+    unfreq_used = [] #List of uncommon variables, we will use this to guarantee order in the new entries
+    for factor in flist:
         factor_map = []
-        for var in common_variables:
-            factor_map.append(factor.get_scope().index(var))
+        for item in freq_used:
+            factor_map.append(factor.get_scope().index(item))
         mapping.append(factor_map)
         combos.append(get_all_value_combinations(factor.get_scope()))
         product_scope = list(set(product_scope).union(factor.get_scope()))
-        uncommon_temp = list(set(factor.get_scope()).difference(common_variables))
-        uncommon_variables = list(set(uncommon_variables).union(uncommon_temp))
+        uncommon_temp = list(set(factor.get_scope()).difference(freq_used))
+        unfreq_used = list(set(unfreq_used).union(uncommon_temp))
     product_combos = get_all_value_combinations(product_scope)
 
     return product_combos, product_scope
 
-def check_const_factors(common_variables, factor_list):
+def check_const_factors(freq_used, flist):
     constant_factor = None
-    for factor in factor_list:
+    for factor in flist:
         if len(factor.get_scope()) == 0:
             constant_factor = factor
             break
     if constant_factor != None: #There is a constant factor
         other_factor = None
-        if constant_factor != factor_list[0]:
-            other_factor = factor_list[0]
+        if constant_factor != flist[0]:
+            other_factor = flist[0]
         else:
-            other_factor = factor_list[1]
+            other_factor = flist[1]
         combos = get_all_value_combinations(other_factor.get_scope())
-        new_factor_table = []
+        newie_table = []
         for combo in combos:
             entry = list(combo)
             value = constant_factor.get_value([]) * other_factor.get_value(combo)
             entry.append(value)
-            new_factor_table.append(entry)
-        new_factor = Factor("Product of {} and {}".format(constant_factor, other_factor), other_factor.get_scope())
-        new_factor.add_values(new_factor_table)
-        factor_list.remove(constant_factor)
-        factor_list.remove(other_factor)
-        factor_list.append(new_factor)
+            newie_table.append(entry)
+        newie = Factor("Product of {} and {}".format(constant_factor, other_factor), other_factor.get_scope())
+        newie.add_values(newie_table)
+        flist.remove(constant_factor)
+        flist.remove(other_factor)
+        flist.append(newie)
 
-    return factor_list
+    return flist
 
-def find_common_variables(factors):
-    #Given a list of factors, return an array of common_variables assuming there is at least one
+def find_freq_used(factors):
+    #Given a list of factors, return an array of freq_used assuming there is at least one
     return_list = None
     for factor in factors:
         if return_list == None:
@@ -123,7 +127,7 @@ def find_common_variables(factors):
             break
     return return_list
             
-def get_all_value_combinations(variables, filter_array=None):
+def get_all_value_combinations(variables, filters=None):
     '''
     Given an ordered list of variables, returns a list of lists containing
     every combination of possible values within the variable domains, in
@@ -133,16 +137,16 @@ def get_all_value_combinations(variables, filter_array=None):
     and the second is a list of values to filter for. The index of the
     variables must match the values.
     '''
-    if filter_array == None:
-        filter_array = [[None]]
+    if filters == None:
+        filters = [[None]]
     return_list = [[]]
-    for var in variables:
-        if var in filter_array[0]:
+    for it in variables:
+        if it in filters[0]:
             for item in return_list:
-                item.append(filter_array[1][filter_array[0].index(var)])
+                item.append(filters[1][filters[0].index(it)])
         else:
             new_list = []
-            for value in var.domain():
+            for value in it.domain():
                 for item in return_list:
                     new_item = list(item)
                     new_item.append(value)
@@ -164,19 +168,19 @@ Return:
               constant factor
 '''
 def restrict_factor(factor, variable, value):
-    new_factor_table = []
-    var_index = factor.get_scope().index(variable)
+    newie_table = []
+    ind = factor.get_scope().index(variable)
     combos = get_all_value_combinations(factor.get_scope())
     for combo in combos:
-        if combo[var_index] == value:
+        if combo[ind] == value:
             entry = list(combo)
-            entry.pop(var_index)
+            entry.pop(ind)
             entry.append(factor.get_value(combo))
-            new_factor_table.append(entry)
+            newie_table.append(entry)
     new_scope = factor.get_scope()
-    new_scope.pop(var_index)
+    new_scope.pop(ind)
     restricted_factor = Factor("Restriction:{};{};{}".format(factor,variable,value),new_scope)
-    restricted_factor.add_values(new_factor_table)
+    restricted_factor.add_values(newie_table)
     return restricted_factor
 
     
@@ -190,22 +194,22 @@ Return:
               A new factor that is "factor" summed out over "variable"
 '''
 def sum_out_variable(factor, variable):
-    var_index = factor.get_scope().index(variable)
+    ind = factor.get_scope().index(variable)
     popped_scope = factor.get_scope()
-    popped_scope.pop(var_index)
+    popped_scope.pop(ind)
     popped_combos = get_all_value_combinations(popped_scope)
-    new_factor_table = []
+    newie_table = []
     for combo in popped_combos:
         combo_sum = 0
         for value in variable.domain():
             query = list(combo)
-            query.insert(var_index, value)
+            query.insert(ind, value)
             combo_sum += factor.get_value(query)
         entry = list(combo)
         entry.append(combo_sum)
-        new_factor_table.append(entry)
+        newie_table.append(entry)
     sum_out_factor = Factor("Sum Out:{},{}".format(factor, variable),popped_scope)
-    sum_out_factor.add_values(new_factor_table)
+    sum_out_factor.add_values(newie_table)
     return sum_out_factor
 
 '''
@@ -239,46 +243,61 @@ VariableElimination(net, queryVar, evidenceVars)
 '''       
 def VariableElimination(net, queryVar, evidenceVars):
     #Restrict all factors based on evidence
-    cur_factors = net.factors()
-    for var in evidenceVars:
-        restricted_factors = list(cur_factors)
-        for factor in cur_factors:
-            if var in factor.get_scope():
-                new_factor = restrict_factor(factor, var, var.get_evidence())
-                restricted_factors.remove(factor)
-                restricted_factors.append(new_factor)
-        cur_factors = restricted_factors
+    
+    currents = evid_vars(evidenceVars, net.factors())
+
     #Conduct VE using min fill ordering
-    elimination_order = min_fill_ordering(cur_factors, queryVar)
+    currents = min_order_fill_fact(currents, queryVar)
+    
+    #Compute product and normalize
+    finals = multiply_factors(currents)
+    #print("BEFORE NORMALIZATION CHECK")
+    #my_print_table(finals)
+    #Normalize
+    combo_list = get_all_value_combinations(finals.get_scope())
+    fin_sum = 0
+    
+    #print("SOLUTION")
+    #my_print_table(finals)
+    return get_distr(finals, combo_list, fin_sum)
+
+def get_distr(finals, combo_list, fin_sum):
+    for combo in combo_list:
+        fin_sum += finals.get_value(combo)
+    distribution = []
+    for combo in combo_list:
+        if not fin_sum: #If the sum is 0
+            distribution.append(0)
+        else:
+            distribution.append(finals.get_value(combo)/fin_sum)
+
+    return distribution
+
+def evid_vars(evidenceVars, currents):
+    for evid in evidenceVars:
+        restricts = list(currents)
+        for factor in currents:
+            if evid in factor.get_scope():
+                newie = restrict_factor(factor, evid, evid.get_evidence())
+                restricts.remove(factor)
+                restricts.append(newie)
+        currents = restricts
+    return currents
+
+def min_order_fill_fact(currents, queryVar):
+    elimination_order = min_fill_ordering(currents, queryVar)
     for elim_var in elimination_order:
-        elim_factor_list = [] #A list of factors containing elim_var
-        for factor in cur_factors:
+        elim_flist = [] #A list of factors containing elim_var
+        for factor in currents:
             if elim_var in factor.get_scope():
-                elim_factor_list.append(factor)
-        compressed_factors = sum_out_variable(multiply_factors(elim_factor_list), elim_var)
+                elim_flist.append(factor)
+        compressed_factors = sum_out_variable(multiply_factors(elim_flist), elim_var)
         #print("ELIMINATION OF:{}, SCOPE:{}".format(elim_var, compressed_factors.get_scope()))
         #print("COMPRESSED FACTORS CHECK")
         #my_print_table(compressed_factors)
-        cur_factors = list(set(cur_factors).difference(elim_factor_list))
-        cur_factors.append(compressed_factors)
-    #Compute product and normalize
-    final_factor = multiply_factors(cur_factors)
-    #print("BEFORE NORMALIZATION CHECK")
-    #my_print_table(final_factor)
-    #Normalize
-    combo_list = get_all_value_combinations(final_factor.get_scope())
-    probability_sum = 0
-    for combo in combo_list:
-        probability_sum += final_factor.get_value(combo)
-    distribution = []
-    for combo in combo_list:
-        if not probability_sum: #If the sum is 0
-            distribution.append(0)
-        else:
-            distribution.append(final_factor.get_value(combo)/probability_sum)
-    #print("SOLUTION")
-    #my_print_table(final_factor)
-    return distribution
+        currents = list(set(currents).difference(elim_flist))
+        currents.append(compressed_factors)
+    return currents
 
 
 
