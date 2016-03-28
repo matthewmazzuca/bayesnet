@@ -23,12 +23,12 @@ def multiply_factors(factors):
         if len(common_variables) is 0: #There may be a constant factor
             constant_factor = None
             for factor in factor_list:
-                if len(factor.get_scope()) is 0:
+                if len(factor.get_scope()) == 0:
                     constant_factor = factor
                     break
-            if constant_factor is not None: #There is a constant factor
+            if constant_factor != None: #There is a constant factor
                 other_factor = None
-                if constant_factor is not factor_list[0]:
+                if constant_factor != factor_list[0]:
                     other_factor = factor_list[0]
                 else:
                     other_factor = factor_list[1]
@@ -80,7 +80,7 @@ def multiply_factors(factors):
                 for index2 in range(len(cart[index])):
                     if not product_value: #If it is 0, we can stop
                             break
-                    if index2 is 0:
+                    if index2 == 0:
                         continue #Do nothing, we initialized at this value
                     else:
                         product_value *= factor_list[index2].get_value(cart[index][index2])
@@ -98,11 +98,11 @@ def find_common_variables(factors):
     #Given a list of factors, return an array of common_variables assuming there is at least one
     return_list = None
     for factor in factors:
-        if return_list is None:
+        if return_list == None:
             return_list = factor.get_scope()
         else:
             return_list = list(set(return_list).intersection(factor.get_scope()))
-        if len(return_list) is 0:
+        if len(return_list) == 0:
             break
     return return_list
             
@@ -116,7 +116,7 @@ def get_all_value_combinations(variables, filter_array=None):
     and the second is a list of values to filter for. The index of the
     variables must match the values.
     '''
-    if filter_array is None:
+    if filter_array == None:
         filter_array = [[None]]
     return_list = [[]]
     for var in variables:

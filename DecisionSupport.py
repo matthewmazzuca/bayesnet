@@ -26,41 +26,66 @@ Return:
 '''
 def DecisionSupport(medicalNet, patient):
     medicalNet.set_evidence_by_patient(patient)
-    elim_vars = list(set(set(set(medicalNet.net.variables()).difference(medicalNet.getTreatmentVars()).difference(medicalNet.getOutcomeVars()))).difference(patient.evidenceVariables()))
-    current_factors = medicalNet.net.factors() #A running list of all factors of interest
+    eliminate = list(set(set(set(medicalNet.net.variables()) \
+                .difference(medicalNet.getTreatmentVars()) \
+                .difference(medicalNet.getOutcomeVars()))) \
+                .difference(patient.evidenceVariables()))
+
+    curr = medicalNet.net.factors() #A running list of all factors of interest
     #Restrict factors based on evidence
-    for var in patient.evidenceVariables():
-        restricted_factors = list(current_factors)
-        for factor in current_factors:
-            if var in factor.get_scope():
-                new_factor = restrict_factor(factor, var, var.get_evidence())
+
+    curr = restrict_factors(curr, patient)
+    
+    #Eliminate variables not in the final factor
+    curr = elim_vars_fin_factors(eliminate, curr)
+
+    final = multiply_factors(curr)
+    #Normalize with respect to each treatment option
+    mixing = get_all_value_combinations(medicalNet.getTreatmentVars())
+    
+    return norm_for_treatments(medicalNet, final)
+
+def norm_for_treatments(medicalNet, final):
+    mixing = get_all_value_combinations(medicalNet.getTreatmentVars())
+    for mix in mixing:
+        treatment_sum = 0
+        connect = get_all_value_combinations(final.get_scope(), \
+                [medicalNet.getTreatmentVars(),mix])
+
+        for m in connect:
+            treatment_sum += final.get_value(m)
+        #Overwrite entries with normalized value
+        for m in connect:
+            if treatment_sum != 0:
+                final.add_value_at_assignment(final.get_value(m)/treatment_sum, m)
+    return final
+
+
+def restrict_factors(curr, patient):
+    for item in patient.evidenceVariables():
+        restricted_factors = list(curr)
+        for factor in curr:
+            if item in factor.get_scope():
+                new_factor = restrict_factor(factor, item, item.get_evidence())
                 restricted_factors.remove(factor)
                 restricted_factors.append(new_factor)
-        current_factors = restricted_factors
-    #Eliminate variables not in the final factor
-    for var in elim_vars:
+        curr = restricted_factors
+
+    return curr
+
+def elim_vars_fin_factors(eliminate, curr):
+    for item in eliminate:
         #Get all factors with var
         factors_with_var = []
-        iter_list = list(current_factors)
+        iter_list = list(curr)
         for factor in iter_list:
-            if var in factor.get_scope():
+            if item in factor.get_scope():
                 factors_with_var.append(factor)
-                current_factors.remove(factor)
-        new_factor = sum_out_variable(multiply_factors(factors_with_var), var)
-        current_factors.append(new_factor)
-    final_factor = multiply_factors(current_factors)
-    #Normalize with respect to each treatment option
-    treatment_combos = get_all_value_combinations(medicalNet.getTreatmentVars())
-    for treatment_combo in treatment_combos:
-        treatment_sum = 0
-        matches = get_all_value_combinations(final_factor.get_scope(), [medicalNet.getTreatmentVars(),treatment_combo])
-        for match in matches:
-            treatment_sum += final_factor.get_value(match)
-        #Overwrite entries with normalized value
-        for match in matches:
-            if treatment_sum is not 0:
-                final_factor.add_value_at_assignment(final_factor.get_value(match)/treatment_sum, match)
-    return final_factor
+                curr.remove(factor)
+        new_factor = sum_out_variable(multiply_factors(factors_with_var), item)
+        curr.append(new_factor)
+    return curr
+
 
 def get_all_value_combinations(variables, filter_array=None):
     '''
@@ -75,13 +100,13 @@ def get_all_value_combinations(variables, filter_array=None):
     if filter_array is None:
         filter_array = [[None]]
     return_list = [[]]
-    for var in variables:
-        if var in filter_array[0]:
+    for thg in variables:
+        if thg in filter_array[0]:
             for item in return_list:
-                item.append(filter_array[1][filter_array[0].index(var)])
+                item.append(filter_array[1][filter_array[0].index(thg)])
         else:
             new_list = []
-            for value in var.domain():
+            for value in thg.domain():
                 for item in return_list:
                     new_item = list(item)
                     new_item.append(value)
