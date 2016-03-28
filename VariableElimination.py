@@ -20,79 +20,96 @@ def multiply_factors(factors):
     factor_list = list(factors)
     while(len(factor_list) > 1):
         common_variables = find_common_variables(factor_list)
-        if len(common_variables) is 0: #There may be a constant factor
-            constant_factor = None
-            for factor in factor_list:
-                if len(factor.get_scope()) == 0:
-                    constant_factor = factor
-                    break
-            if constant_factor != None: #There is a constant factor
-                other_factor = None
-                if constant_factor != factor_list[0]:
-                    other_factor = factor_list[0]
-                else:
-                    other_factor = factor_list[1]
-                combos = get_all_value_combinations(other_factor.get_scope())
-                new_factor_table = []
-                for combo in combos:
-                    entry = list(combo)
-                    value = constant_factor.get_value([]) * other_factor.get_value(combo)
-                    entry.append(value)
-                    new_factor_table.append(entry)
-                new_factor = Factor("Product of {} and {}".format(constant_factor, other_factor), other_factor.get_scope())
-                new_factor.add_values(new_factor_table)
-                factor_list.remove(constant_factor)
-                factor_list.remove(other_factor)
-                factor_list.append(new_factor)
-                continue #Check for more constant factors
+        if len(common_variables) == 0: #There may be a constant factor
+            factor_list = check_const_factors(common_variables, factor_list)
+
+
         #There is no constant factor
-        mapping = [] #Contains maps to the indices of common variables in each factor
-        combos = [] #Contains arrays of variable value combos for each factor
-        product_scope = [] #Product factor's scope
-        uncommon_variables = [] #List of uncommon variables, we will use this to guarantee order in the new entries
-        for factor in factor_list:
-            factor_map = []
-            for var in common_variables:
-                factor_map.append(factor.get_scope().index(var))
-            mapping.append(factor_map)
-            combos.append(get_all_value_combinations(factor.get_scope()))
-            product_scope = list(set(product_scope).union(factor.get_scope()))
-            uncommon_temp = list(set(factor.get_scope()).difference(common_variables))
-            uncommon_variables = list(set(uncommon_variables).union(uncommon_temp))
-        product_combos = get_all_value_combinations(product_scope)
+        product_combos, product_scope = no_const_factor(common_variables, factor_list)
         #Generate new factor table
-        new_factor_table = []
-        for product_combo in product_combos:
-            #Compute matches
-            matches = []
-            for factor_index in range(len(factor_list)):
-                filter_array = [[],[]]
-                for var_index in range(len(product_scope)):
-                    if product_scope[var_index] in factor_list[factor_index].get_scope():
-                        filter_array[0].append(product_scope[var_index])
-                        filter_array[1].append(product_combo[var_index])
-                factor_matches = get_all_value_combinations(factor_list[factor_index].get_scope(), filter_array)
-                matches.append(factor_matches)
-            #Compute products
-            cart = list(itertools.product(*matches))
-            for index in range(len(cart)):
-                product_value = factor_list[0].get_value(cart[index][0])
-                for index2 in range(len(cart[index])):
-                    if not product_value: #If it is 0, we can stop
-                            break
-                    if index2 == 0:
-                        continue #Do nothing, we initialized at this value
-                    else:
-                        product_value *= factor_list[index2].get_value(cart[index][index2])
-                #Add new entry to factor table
-                entry = list(product_combo)
-                entry.append(product_value)
-                new_factor_table.append(entry)
+        
+        product_scope, factor_list, product_combos, new_factor_table = get_matches(product_combos, factor_list, product_scope)
+        
         #Create new factor object and return it
         new_factor = Factor("Product of {}".format(factor_list), product_scope)
         new_factor.add_values(new_factor_table)
         factor_list = [new_factor]
     return factor_list[0]
+
+def get_matches(product_combos, factor_list, product_scope):
+    new_factor_table = []
+    for product_combo in product_combos:
+        #Compute matches
+        matches = []
+        for factor_index in range(len(factor_list)):
+            filter_array = [[],[]]
+            for var_index in range(len(product_scope)):
+                if product_scope[var_index] in factor_list[factor_index].get_scope():
+                    filter_array[0].append(product_scope[var_index])
+                    filter_array[1].append(product_combo[var_index])
+            factor_matches = get_all_value_combinations(factor_list[factor_index].get_scope(), filter_array)
+            matches.append(factor_matches)
+        #Compute products
+        cart = list(itertools.product(*matches))
+        for index in range(len(cart)):
+            product_value = factor_list[0].get_value(cart[index][0])
+            for index2 in range(len(cart[index])):
+                if not product_value: #If it is 0, we can stop
+                        break
+                if index2 == 0:
+                    continue #Do nothing, we initialized at this value
+                else:
+                    product_value *= factor_list[index2].get_value(cart[index][index2])
+            #Add new entry to factor table
+            entry = list(product_combo)
+            entry.append(product_value)
+            new_factor_table.append(entry)
+    return product_scope, factor_list, product_combos, new_factor_table
+
+def no_const_factor(common_variables, factor_list):
+    mapping = [] #Contains maps to the indices of common variables in each factor
+    combos = [] #Contains arrays of variable value combos for each factor
+    product_scope = [] #Product factor's scope
+    uncommon_variables = [] #List of uncommon variables, we will use this to guarantee order in the new entries
+    for factor in factor_list:
+        factor_map = []
+        for var in common_variables:
+            factor_map.append(factor.get_scope().index(var))
+        mapping.append(factor_map)
+        combos.append(get_all_value_combinations(factor.get_scope()))
+        product_scope = list(set(product_scope).union(factor.get_scope()))
+        uncommon_temp = list(set(factor.get_scope()).difference(common_variables))
+        uncommon_variables = list(set(uncommon_variables).union(uncommon_temp))
+    product_combos = get_all_value_combinations(product_scope)
+
+    return product_combos, product_scope
+
+def check_const_factors(common_variables, factor_list):
+    constant_factor = None
+    for factor in factor_list:
+        if len(factor.get_scope()) == 0:
+            constant_factor = factor
+            break
+    if constant_factor != None: #There is a constant factor
+        other_factor = None
+        if constant_factor != factor_list[0]:
+            other_factor = factor_list[0]
+        else:
+            other_factor = factor_list[1]
+        combos = get_all_value_combinations(other_factor.get_scope())
+        new_factor_table = []
+        for combo in combos:
+            entry = list(combo)
+            value = constant_factor.get_value([]) * other_factor.get_value(combo)
+            entry.append(value)
+            new_factor_table.append(entry)
+        new_factor = Factor("Product of {} and {}".format(constant_factor, other_factor), other_factor.get_scope())
+        new_factor.add_values(new_factor_table)
+        factor_list.remove(constant_factor)
+        factor_list.remove(other_factor)
+        factor_list.append(new_factor)
+
+    return factor_list
 
 def find_common_variables(factors):
     #Given a list of factors, return an array of common_variables assuming there is at least one
@@ -151,7 +168,7 @@ def restrict_factor(factor, variable, value):
     var_index = factor.get_scope().index(variable)
     combos = get_all_value_combinations(factor.get_scope())
     for combo in combos:
-        if combo[var_index] is value:
+        if combo[var_index] == value:
             entry = list(combo)
             entry.pop(var_index)
             entry.append(factor.get_value(combo))
@@ -263,68 +280,6 @@ def VariableElimination(net, queryVar, evidenceVars):
     #my_print_table(final_factor)
     return distribution
 
-def my_print_table(factor): #My own print table method
-    combos = get_all_value_combinations(factor.get_scope())
-    print("Table of: {}".format(factor))
-    print("-----------")
-    for combo in combos:
-        print("{} |{}".format(combo, factor.get_value(combo)))
-    print("-----------")
 
-if __name__ == "__main__":
-    '''
-    var1 = Variable("V1", ["on","off"])
-    var2 = Variable("V2", ["George","Martha"])
-    var3 = Variable("V3", [1,2])
-    fac1 = Factor("F1", [var1,var2])
-    fac1.add_values([["on","George",0.1],
-                     ["on","Martha",0.2],
-                     ["off","George",0.4],
-                     ["off","Martha",0.99]])
-    my_print_table(fac1)
-    fac2 = Factor("F2", [var2,var3])
-    fac2.add_values([["George",1,0.16],
-                     ["George",2,0.32],
-                     ["Martha",1,0.64],
-                     ["Martha",2,0.128]])
-    my_print_table(fac2)
-
-    restriction = restrict_factor(fac1,var1,"on")
-    my_print_table(restriction)
-    restriction = restrict_factor(fac1,var1,"off")
-    my_print_table(restriction)
-    
-    fac3 = Factor("F3", [var1])
-    fac3.add_values([["on",0.2],
-                     ["off",0.5]])
-    constant = restrict_factor(fac3,var1,"on")
-    my_print_table(constant)
-    test_net = BayesianNetwork("TestNet", [var1,var2,var3], [fac1,fac2,fac3])
-    var2.set_evidence("Martha")
-    var3.set_evidence(2)
-    print("TA-DA:{}".format(VariableElimination(test_net, var1, [var2,var3])))'''
-    
-    #Class example: (slide 116)
-    var_a = Variable("a", [0, 1])
-    var_b = Variable("b", [0, 1])
-    var_c = Variable("c", [0, 1])
-    
-    factor_1 = Factor("F1", [var_a])
-    factor_1.add_values([[0, 0.1],
-                         [1, 0.9]])
-    factor_2 = Factor("F2", [var_a, var_b])
-    factor_2.add_values([[0, 0, 0.6],
-                         [0, 1, 0.4],
-                         [1, 0, 0.1],
-                         [1, 1, 0.9]])
-    factor_3 = Factor("F3", [var_b, var_c])
-    factor_3.add_values([[0, 0, 0.8],
-                         [0, 1, 0.2],
-                         [1, 0, 0.3],
-                         [1, 1, 0.7]])
-    my_print_table(sum_out_variable(multiply_factors([factor_1,factor_2]), var_a))
-    class_example = BayesianNetwork("ClassNet", [var_a,var_b,var_c], [factor_1,factor_2,factor_3])
-    print("Class Example:{}".format(VariableElimination(class_example, var_c, [])))
-    
 
 

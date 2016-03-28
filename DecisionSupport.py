@@ -48,41 +48,41 @@ def DecisionSupport(medicalNet, patient):
 def norm_for_treatments(medicalNet, final):
     mixing = get_all_value_combinations(medicalNet.getTreatmentVars())
     for mix in mixing:
-        treatment_sum = 0
+        num_treat = 0
         connect = get_all_value_combinations(final.get_scope(), \
                 [medicalNet.getTreatmentVars(),mix])
 
         for m in connect:
-            treatment_sum += final.get_value(m)
+            num_treat += final.get_value(m)
         #Overwrite entries with normalized value
         for m in connect:
-            if treatment_sum != 0:
-                final.add_value_at_assignment(final.get_value(m)/treatment_sum, m)
+            if num_treat != 0:
+                final.add_value_at_assignment(final.get_value(m)/num_treat, m)
     return final
 
 
 def restrict_factors(curr, patient):
     for item in patient.evidenceVariables():
-        restricted_factors = list(curr)
+        restrict = list(curr)
         for factor in curr:
             if item in factor.get_scope():
                 new_factor = restrict_factor(factor, item, item.get_evidence())
-                restricted_factors.remove(factor)
-                restricted_factors.append(new_factor)
-        curr = restricted_factors
+                restrict.remove(factor)
+                restrict.append(new_factor)
+        curr = restrict
 
     return curr
 
 def elim_vars_fin_factors(eliminate, curr):
     for item in eliminate:
         #Get all factors with var
-        factors_with_var = []
+        all_factors = []
         iter_list = list(curr)
         for factor in iter_list:
             if item in factor.get_scope():
-                factors_with_var.append(factor)
+                all_factors.append(factor)
                 curr.remove(factor)
-        new_factor = sum_out_variable(multiply_factors(factors_with_var), item)
+        new_factor = sum_out_variable(multiply_factors(all_factors), item)
         curr.append(new_factor)
     return curr
 
